@@ -1,10 +1,13 @@
 import functools
 import os
 import sys
+
+from tornado.httpserver import HTTPServer
 import tornado.ioloop
 
 from app.subcommands.subcommand import Subcommand
 from app.util import fs
+from app.util.conf.configuration import Configuration
 from app.util.safe_thread import SafeThread
 from app.util.unhandled_exception_handler import UnhandledExceptionHandler
 
@@ -33,7 +36,8 @@ class ServiceSubcommand(Subcommand):
         # will raise an exception if another process is using the same port. We rely on this exception to force us to
         # exit if there are any port conflicts.
         try:
-            application.listen(port, '0.0.0.0')
+            server = HTTPServer(application, ssl_options=self._get_https_options())
+            server.listen(port, '0.0.0.0')
         except OSError:
             self._logger.error('Could not start application on port {}. Is port already in use?'.format(port))
             sys.exit(1)
@@ -44,6 +48,16 @@ class ServiceSubcommand(Subcommand):
         stop_tornado_ioloop = functools.partial(ioloop.add_callback, callback=ioloop.stop)
         UnhandledExceptionHandler.singleton().add_teardown_callback(stop_tornado_ioloop)
         return ioloop
+
+    def _get_https_options(self):
+        https_cert_file = Configuration['https_cert_file']
+        https_key_file = Configuration['https_key_file']
+        if https_cert_file and https_key_file:
+            return {
+                'certfile': https_cert_file,
+                'keyfile': https_key_file,
+            }
+        return None
 
     def _write_pid_file(self, filename):
         fs.write_file(str(os.getpid()), filename)

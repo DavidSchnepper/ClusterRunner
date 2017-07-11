@@ -1,5 +1,6 @@
 import http.client
 import os
+import random
 import urllib.parse
 
 import tornado.web
@@ -19,6 +20,18 @@ from app.web_framework.route_node import RouteNode
 # pylint: disable=attribute-defined-outside-init
 #   Handler classes are not designed to have __init__ overridden.
 
+
+class HandlerWrapper:
+    def __init__(self, handler_cls_list):
+        self._handler_cls_list = handler_cls_list
+
+    def __call__(self, application, request, **kwargs):
+        # return a random handler from the handler list, just for funsies.
+        log.get_logger(__name__).critical(request.headers)
+        handler_cls = random.choice(self._handler_cls_list)
+        return handler_cls(application, request, **kwargs)
+
+
 class ClusterMasterApplication(ClusterApplication):
 
     def __init__(self, cluster_master):
@@ -33,7 +46,7 @@ class ClusterMasterApplication(ClusterApplication):
         root_route = \
             RouteNode(r'/', _RootHandler).add_children([
                 RouteNode(r'v1', _APIVersionOneHandler).add_children([
-                    RouteNode(r'metrics', _MetricsHandler),
+                    RouteNode(r'metrics', HandlerWrapper([_MetricsHandler, _AltMetricsHandler])),
                     RouteNode(r'version', _VersionHandler),
                     RouteNode(r'build', _BuildsHandler, 'builds').add_children([
                         RouteNode(r'(\d+)', _BuildHandler, 'build').add_children([
@@ -101,6 +114,11 @@ class _VersionHandler(_ClusterMasterBaseAPIHandler):
 class _MetricsHandler(_ClusterMasterBaseAPIHandler):
     def get(self):
         self.write_text(prometheus_client.exposition.generate_latest(prometheus_client.core.REGISTRY))
+
+
+class _AltMetricsHandler(_ClusterMasterBaseAPIHandler):
+    def get(self):
+        self.write_text('HAHAHA')
 
 
 class _QueueHandler(_ClusterMasterBaseAPIHandler):

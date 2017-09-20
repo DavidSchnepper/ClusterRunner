@@ -53,8 +53,9 @@ make init-dev
 ```
 
 
-Set up Python 3.4 using virtualenv (outdated!)
-----------------
+<details>
+<summary>Click here for old setup instructions (virtualenv)</summary>
+
 ```bash
 # Install Python 3.4
 brew update
@@ -78,3 +79,5 @@ mkvirtualenv -p /usr/local/bin/python3.4 clusterrunner
 workon clusterrunner
 make init-dev
 ```
+</details>
+
